@@ -148,22 +148,6 @@ class TvKeyImeService : InputMethodService() {
         val oldSpec = keyViews.getOrNull(focusIndex)?.tag as? KeySpec
         root.removeAllViews()
         keyViews.clear()
-        val header = LinearLayout(this).apply {
-            gravity = Gravity.CENTER_VERTICAL
-            orientation = LinearLayout.HORIZONTAL
-            setPadding(dp(4), 0, dp(4), dp(6))
-            clipChildren = false
-        }
-        // Google TV keeps this strip for the mic/suggestions; here it only holds a small close key
-        // (needed for air-mouse users who have no Back button).
-        header.addView(View(this), LinearLayout.LayoutParams(0, dp(36), 1f))
-        val closeButton = makeKeyButton(KeySpec("✕", KeyType.CLOSE)).apply {
-            textSize = 16f
-            layoutParams = LinearLayout.LayoutParams(dp(64), dp(36))
-        }
-        header.addView(closeButton)
-        keyViews += closeButton
-        root.addView(header)
         KeyboardModel.rows(mode, shift, actionLabel, webContext, capsLock).forEach { row ->
             val line = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
@@ -293,7 +277,6 @@ class TvKeyImeService : InputMethodService() {
             KeyType.CURSOR_LEFT -> sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_LEFT)
             KeyType.CURSOR_RIGHT -> sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_RIGHT)
             KeyType.MODE_LETTERS -> { mode = KeyboardMode.LETTERS; rebuild(true) }
-            KeyType.CLOSE -> requestHideSelf(0)
         }
     }
 
