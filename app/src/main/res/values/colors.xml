@@ -1,0 +1,8 @@
+<resources>
+    <color name="keyboard_background">#111318</color>
+    <color name="key_background">#2A2F38</color>
+    <color name="key_text">#FFFFFF</color>
+    <color name="focus">#FFCA28</color>
+    <color name="accent">#245B9B</color>
+    <color name="muted">#B8C0CC</color>
+</resources>
