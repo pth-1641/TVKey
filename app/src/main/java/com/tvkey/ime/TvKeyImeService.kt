@@ -25,7 +25,6 @@ import kotlin.math.roundToInt
 /** A real Android IME; it writes only through the current InputConnection. */
 class TvKeyImeService : InputMethodService() {
     private lateinit var root: LinearLayout
-    private lateinit var status: TextView
     private val keyViews = mutableListOf<Button>()
     private var focusIndex = 0
     private var mode = KeyboardMode.LETTERS
@@ -61,11 +60,11 @@ class TvKeyImeService : InputMethodService() {
             clipChildren = false
             clipToPadding = false
         }
-        // Compact, centred panel like the Google TV keyboard; the area beside it stays transparent.
+        // Google TV look (dark rounded panel), stretched across the full screen width.
         val metrics = resources.displayMetrics
-        val panelWidth = (metrics.widthPixels * 0.62f).roundToInt().coerceIn(dp(520), metrics.widthPixels)
+        val panelWidth = ViewGroup.LayoutParams.MATCH_PARENT   // full width, anchored to the bottom
         val maxHeight = (metrics.heightPixels - dp(72)).coerceAtLeast(dp(240))
-        val panelHeight = (metrics.heightPixels * 0.5f).roundToInt().coerceIn(dp(280), minOf(dp(420), maxHeight))
+        val panelHeight = (metrics.heightPixels * 0.52f).roundToInt().coerceIn(dp(280), minOf(dp(440), maxHeight))
         root.background = GradientDrawable().apply {
             setColor(getColor(R.color.keyboard_background))
             cornerRadius = dp(18).toFloat()
@@ -155,24 +154,12 @@ class TvKeyImeService : InputMethodService() {
             setPadding(dp(4), 0, dp(4), dp(6))
             clipChildren = false
         }
-        status = TextView(this).apply {
-            text = when (mode) {
-                else -> if (capsLock) "⇪ CAPS" else if (shift) "⇧ HOA" else ""
-            }
-            setTextColor(Color.WHITE); textSize = dimensionSp(R.dimen.ime_status_text_size)
-            layoutParams = LinearLayout.LayoutParams(0, dp(34), 1f)
-        }
-        header.addView(status)
-        if (mode == KeyboardMode.LETTERS) {
-            KeyboardModel.quickKeys(webContext).forEach { spec ->
-                val chip = makeKeyButton(spec).apply { textSize = 16f }
-                header.addView(chip, LinearLayout.LayoutParams(dp(120), dp(42)).apply { setMargins(dp(4), 0, dp(4), 0) })
-                keyViews += chip
-            }
-        }
-        val closeButton = makeKeyButton(KeySpec("ĐÓNG", KeyType.CLOSE)).apply {
-            textSize = 14f
-            layoutParams = LinearLayout.LayoutParams(dp(110), dp(42))
+        // Google TV keeps this strip for the mic/suggestions; here it only holds a small close key
+        // (needed for air-mouse users who have no Back button).
+        header.addView(View(this), LinearLayout.LayoutParams(0, dp(36), 1f))
+        val closeButton = makeKeyButton(KeySpec("✕", KeyType.CLOSE)).apply {
+            textSize = 16f
+            layoutParams = LinearLayout.LayoutParams(dp(64), dp(36))
         }
         header.addView(closeButton)
         keyViews += closeButton
@@ -226,7 +213,7 @@ class TvKeyImeService : InputMethodService() {
         stateListAnimator = null
         tag = spec
         applyStyle(this, false, false)
-        contentDescription = spec.label
+        contentDescription = if (spec.type == KeyType.SPACE) "Dấu cách" else spec.label
         tag = spec
         isFocusable = true
         isFocusableInTouchMode = true
@@ -351,17 +338,16 @@ class TvKeyImeService : InputMethodService() {
         val active = spec != null && spec.type == KeyType.SHIFT && shift
         val fill = when {
             focused -> Color.WHITE
-            hovered -> 0xFF4A5260.toInt()
-            active -> getColor(R.color.accent)
-            spec?.type == KeyType.ENTER -> getColor(R.color.accent)
+            hovered -> getColor(R.color.key_hover)
+            active -> getColor(R.color.key_active)
+            spec?.type == KeyType.ENTER -> getColor(R.color.key_enter)
             else -> getColor(R.color.key_background)
         }
         button.background = GradientDrawable().apply {
             setColor(fill)
             cornerRadius = resources.getDimension(R.dimen.ime_corner_radius)
-            if (focused) setStroke(dp(3), getColor(R.color.focus))
         }
-        button.setTextColor(if (focused) getColor(R.color.keyboard_background) else Color.WHITE)
+        button.setTextColor(if (focused) getColor(R.color.keyboard_background) else getColor(R.color.key_text))
         val scale = if (focused) 1.08f else 1f
         button.animate().scaleX(scale).scaleY(scale).setDuration(90).start()
         button.elevation = if (focused) dp(8).toFloat() else 0f

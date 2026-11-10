@@ -1,7 +1,10 @@
 <resources>
-    <color name="keyboard_background">#111318</color>
-    <color name="key_background">#2A2F38</color>
-    <color name="key_text">#FFFFFF</color>
+    <color name="keyboard_background">#202124</color>
+    <color name="key_background">#35373C</color>
+    <color name="key_hover">#4A4D54</color>
+    <color name="key_active">#5F6368</color>
+    <color name="key_enter">#3C5A80</color>
+    <color name="key_text">#E8EAED</color>
     <color name="focus">#FFCA28</color>
     <color name="accent">#245B9B</color>
     <color name="muted">#B8C0CC</color>

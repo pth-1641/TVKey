@@ -20,7 +20,8 @@ data class KeyboardRow(val keys: List<KeySpec>)
 
 /** Keeps the layout declarative and independent from Android views. Mirrors the Google TV keyboard. */
 object KeyboardModel {
-    const val SPACE_LABEL = "Dấu cách"
+    /** Open-box glyph, as on the Google TV keyboard. */
+    const val SPACE_LABEL = "␣"
 
     fun rows(
         mode: KeyboardMode,
@@ -34,11 +35,6 @@ object KeyboardModel {
         KeyboardMode.SYMBOLS2 -> symbolRows2(editorActionLabel)
         KeyboardMode.NUMBERS -> numberRows(editorActionLabel)
     }
-
-    /** Quick-insert chips shown in the header row (Android TV style suggestions). */
-    fun quickKeys(webContext: Boolean): List<KeySpec> =
-        if (webContext) listOf(KeySpec(".com"), KeySpec("www."), KeySpec(".vn"))
-        else listOf(KeySpec("youtube"), KeySpec(".com"))
 
     private fun chars(text: String) = text.map { KeySpec(it.toString()) }
 

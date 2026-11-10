@@ -32,7 +32,7 @@ class KeyboardModelTest {
 
     @Test fun bottomRowMatchesGoogleTv() {
         val bottom = KeyboardModel.rows(KeyboardMode.LETTERS, false, "↵", false, false).last().keys
-        assertEquals(listOf("?123", "◀", "▶", "Dấu cách", ".", "↵"), bottom.map { it.label })
+        assertEquals(listOf("?123", "◀", "▶", "␣", ".", "↵"), bottom.map { it.label })
         assertEquals(listOf(KeyType.CURSOR_LEFT, KeyType.CURSOR_RIGHT), bottom.drop(1).take(2).map { it.type })
         val web = KeyboardModel.rows(KeyboardMode.LETTERS, false, "↵", true, false).last().keys
         assertEquals("@", web[4].output)
@@ -45,11 +45,6 @@ class KeyboardModelTest {
         assertTrue(p2.any { it.type == KeyType.MODE_SYMBOLS && it.label == "123?" })
         assertTrue(p2.any { it.output == "€" } && p2.any { it.output == "π" })
         assertTrue(p1.any { it.type == KeyType.MODE_LETTERS } && p2.any { it.type == KeyType.MODE_LETTERS })
-    }
-
-    @Test fun quickKeysDependOnContext() {
-        assertTrue(KeyboardModel.quickKeys(true).any { it.output == "www." })
-        assertTrue(KeyboardModel.quickKeys(false).any { it.output == "youtube" })
     }
 
     @Test fun capsLockChangesShiftGlyph() {

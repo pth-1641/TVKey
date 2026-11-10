@@ -23,7 +23,7 @@ Android bắt buộc người dùng tự bật và chọn IME; app không tự t
 
 ## Ngôn ngữ
 
-Chỉ có bố cục tiếng Anh, kiểu bàn phím Google TV: bảng nhỏ giữa màn hình, số `1–0` hiện ở góc các phím hàng trên (bấm giữ chuột để gõ số), `◀ ▶` di chuyển con trỏ chữ, `?123` → `=\<` mở 2 trang ký hiệu. Shift bấm 1 lần = hoa một chữ, 2 lần = Caps Lock, 3 lần = tắt. Hàng trên cùng có phím gợi nhanh `youtube`, `.com` (ô URL/email: `.com`, `www.`, `.vn`).
+Chỉ có bố cục tiếng Anh, kiểu bàn phím Google TV: trải kín chiều ngang, số `1–0` hiện ở góc các phím hàng trên (bấm giữ chuột để gõ số), `◀ ▶` di chuyển con trỏ chữ, `?123` → `=\<` mở 2 trang ký hiệu. Shift bấm 1 lần = hoa một chữ, 2 lần = Caps Lock, 3 lần = tắt. Hàng trên cùng có phím gợi nhanh `youtube`, `.com` (ô URL/email: `.com`, `www.`, `.vn`).
 
 ## Kiểm thử và phạm vi
 
