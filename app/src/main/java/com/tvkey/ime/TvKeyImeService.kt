@@ -17,6 +17,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
 import android.widget.Button
+import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 import kotlin.math.roundToInt
@@ -54,22 +55,30 @@ class TvKeyImeService : InputMethodService() {
             }
         }.apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(getColor(R.color.keyboard_background))
             setPadding(dp(14), dp(10), dp(14), dp(12))
             isFocusable = true
             isFocusableInTouchMode = true
             clipChildren = false
             clipToPadding = false
         }
-        val screenHeight = resources.displayMetrics.heightPixels
-        val desiredHeight = (screenHeight * 0.58f).roundToInt()
-        val maxHeight = (screenHeight - dp(72)).coerceAtLeast(dp(240))
-        root.layoutParams = ViewGroup.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            desiredHeight.coerceIn(dp(300), minOf(dp(460), maxHeight)),
-        )
+        // Compact, centred panel like the Google TV keyboard; the area beside it stays transparent.
+        val metrics = resources.displayMetrics
+        val panelWidth = (metrics.widthPixels * 0.62f).roundToInt().coerceIn(dp(520), metrics.widthPixels)
+        val maxHeight = (metrics.heightPixels - dp(72)).coerceAtLeast(dp(240))
+        val panelHeight = (metrics.heightPixels * 0.5f).roundToInt().coerceIn(dp(280), minOf(dp(420), maxHeight))
+        root.background = GradientDrawable().apply {
+            setColor(getColor(R.color.keyboard_background))
+            cornerRadius = dp(18).toFloat()
+        }
+        val frame = FrameLayout(this).apply {
+            clipChildren = false
+            clipToPadding = false
+            setPadding(0, 0, 0, dp(10))
+            addView(root, FrameLayout.LayoutParams(panelWidth, panelHeight, Gravity.CENTER_HORIZONTAL or Gravity.BOTTOM))
+        }
+        frame.layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, panelHeight + dp(10))
         rebuild(resetFocus = true)
-        return root
+        return frame
     }
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
@@ -203,12 +212,13 @@ class TvKeyImeService : InputMethodService() {
     private fun defaultFocusIndex(): Int {
         val wanted = when (mode) {
             KeyboardMode.NUMBERS, KeyboardMode.SYMBOLS -> "5"
+            KeyboardMode.SYMBOLS2 -> "√"
             KeyboardMode.LETTERS -> "g"
         }
         return keyViews.indexOfFirst { (it.tag as? KeySpec)?.output == wanted }.takeIf { it >= 0 } ?: 0
     }
 
-    private fun makeKeyButton(spec: KeySpec): Button = Button(this).apply {
+    private fun makeKeyButton(spec: KeySpec): Button = HintButton(this, spec.hint).apply {
         text = spec.label
         textSize = if (spec.label.length > 9) dimensionSp(R.dimen.ime_key_small_text_size) else dimensionSp(R.dimen.ime_key_text_size)
         isAllCaps = false
@@ -239,6 +249,7 @@ class TvKeyImeService : InputMethodService() {
             handleKey(spec)
         }
         if (spec.type == KeyType.DELETE) setOnLongClickListener { startDeleteRepeat(); true }
+        else if (spec.hint != null) setOnLongClickListener { commit(spec.hint); true }
         // A focusable-in-touch-mode view normally spends its first tap only taking focus.
         // Taking focus on DOWN makes a single mouse/touch click activate the key.
         setOnTouchListener { view, event ->
@@ -291,6 +302,9 @@ class TvKeyImeService : InputMethodService() {
             KeyType.SPACE -> commit(" ")
             KeyType.ENTER -> performEditorAction()
             KeyType.MODE_SYMBOLS -> { mode = KeyboardMode.SYMBOLS; rebuild(true) }
+            KeyType.MODE_SYMBOLS2 -> { mode = KeyboardMode.SYMBOLS2; rebuild(true) }
+            KeyType.CURSOR_LEFT -> sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_LEFT)
+            KeyType.CURSOR_RIGHT -> sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_RIGHT)
             KeyType.MODE_LETTERS -> { mode = KeyboardMode.LETTERS; rebuild(true) }
             KeyType.CLOSE -> requestHideSelf(0)
         }
@@ -354,4 +368,17 @@ class TvKeyImeService : InputMethodService() {
     }
     private fun dimensionSp(resource: Int) = resources.getDimension(resource) / resources.displayMetrics.scaledDensity
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).roundToInt()
+
+    /** Button that draws a small hint (e.g. a digit) in its top-right corner. */
+    private class HintButton(context: Context, private val hint: String?) : Button(context) {
+        private val hintPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
+        override fun onDraw(canvas: android.graphics.Canvas) {
+            super.onDraw(canvas)
+            val h = hint ?: return
+            hintPaint.color = currentTextColor
+            hintPaint.alpha = 160
+            hintPaint.textSize = textSize * 0.5f
+            canvas.drawText(h, width - hintPaint.measureText(h) - width * 0.1f, hintPaint.textSize + height * 0.08f, hintPaint)
+        }
+    }
 }

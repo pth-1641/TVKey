@@ -1,10 +1,10 @@
 package com.tvkey.ime
 
-enum class KeyboardMode { LETTERS, SYMBOLS, NUMBERS }
+enum class KeyboardMode { LETTERS, SYMBOLS, SYMBOLS2, NUMBERS }
 
 enum class KeyType {
-    TEXT, SHIFT, DELETE, SPACE, ENTER, MODE_SYMBOLS, MODE_LETTERS,
-    CLOSE,
+    TEXT, SHIFT, DELETE, SPACE, ENTER, MODE_SYMBOLS, MODE_SYMBOLS2, MODE_LETTERS,
+    CURSOR_LEFT, CURSOR_RIGHT, CLOSE,
 }
 
 data class KeySpec(
@@ -12,12 +12,16 @@ data class KeySpec(
     val type: KeyType = KeyType.TEXT,
     val output: String = label,
     val weight: Float = 1f,
+    /** Small corner hint (e.g. the digit on a letter key); long-press/long-click types it. */
+    val hint: String? = null,
 )
 
 data class KeyboardRow(val keys: List<KeySpec>)
 
-/** Keeps the layout declarative and independent from Android views. */
+/** Keeps the layout declarative and independent from Android views. Mirrors the Google TV keyboard. */
 object KeyboardModel {
+    const val SPACE_LABEL = "Dấu cách"
+
     fun rows(
         mode: KeyboardMode,
         shift: Boolean,
@@ -27,6 +31,7 @@ object KeyboardModel {
     ): List<KeyboardRow> = when (mode) {
         KeyboardMode.LETTERS -> letterRows(shift, editorActionLabel, webContext, capsLock)
         KeyboardMode.SYMBOLS -> symbolRows(editorActionLabel)
+        KeyboardMode.SYMBOLS2 -> symbolRows2(editorActionLabel)
         KeyboardMode.NUMBERS -> numberRows(editorActionLabel)
     }
 
@@ -35,59 +40,68 @@ object KeyboardModel {
         if (webContext) listOf(KeySpec(".com"), KeySpec("www."), KeySpec(".vn"))
         else listOf(KeySpec("youtube"), KeySpec(".com"))
 
-    private const val SPACE_LABEL = "Dấu cách"
+    private fun chars(text: String) = text.map { KeySpec(it.toString()) }
 
-    /** Gboard-style: number row, three letter rows, then ?123 , Space . Enter. */
+    /** ◀ ▶ move the text cursor, as on the Google TV keyboard. */
+    private fun bottomRow(first: KeySpec, punctuation: String, action: String) = KeyboardRow(
+        listOf(
+            first,
+            KeySpec("◀", KeyType.CURSOR_LEFT),
+            KeySpec("▶", KeyType.CURSOR_RIGHT),
+            KeySpec(SPACE_LABEL, KeyType.SPACE, weight = 3.5f),
+            KeySpec(punctuation),
+            KeySpec(action, KeyType.ENTER, weight = 1.6f),
+        )
+    )
+
     private fun letterRows(shift: Boolean, action: String, webContext: Boolean, capsLock: Boolean): List<KeyboardRow> {
-        fun letters(text: String) = text.map { char ->
+        fun letters(text: String, hints: String? = null) = text.mapIndexed { i, char ->
             val out = if (shift) char.uppercaseChar().toString() else char.toString()
-            KeySpec(out)
+            KeySpec(out, hint = hints?.get(i)?.toString())
         }
         return listOf(
-            KeyboardRow("1234567890".map { KeySpec(it.toString()) }),
-            KeyboardRow(letters("qwertyuiop")),
+            KeyboardRow(letters("qwertyuiop", "1234567890")),
             KeyboardRow(letters("asdfghjkl")),
             KeyboardRow(
                 listOf(KeySpec(if (capsLock) "⇪" else "⇧", KeyType.SHIFT, weight = 1.5f)) +
                     letters("zxcvbnm") +
                     KeySpec("⌫", KeyType.DELETE, weight = 1.5f)
             ),
-            KeyboardRow(
-                listOf(
-                    KeySpec("?123", KeyType.MODE_SYMBOLS, weight = 1.5f),
-                    KeySpec(if (webContext) "@" else ","),
-                    KeySpec(SPACE_LABEL, KeyType.SPACE, weight = 5f),
-                    KeySpec("."),
-                    KeySpec(action, KeyType.ENTER, weight = 1.5f),
-                )
-            ),
+            bottomRow(KeySpec("?123", KeyType.MODE_SYMBOLS, weight = 1.6f), if (webContext) "@" else ".", action),
         )
     }
 
     private fun symbolRows(action: String): List<KeyboardRow> = listOf(
-        KeyboardRow("1234567890".map { KeySpec(it.toString()) }),
-        KeyboardRow("@#$%&-+()/".map { KeySpec(it.toString()) }),
-        KeyboardRow("*\"':;!?=_".map { KeySpec(it.toString()) } + KeySpec("⌫", KeyType.DELETE)),
+        KeyboardRow(chars("1234567890")),
+        KeyboardRow(chars("@#\$_&-+()/")),
         KeyboardRow(
-            listOf(
-                KeySpec("ABC", KeyType.MODE_LETTERS, weight = 1.5f),
-                KeySpec(","),
-                KeySpec(SPACE_LABEL, KeyType.SPACE, weight = 5f),
-                KeySpec("."),
-                KeySpec(action, KeyType.ENTER, weight = 1.5f),
-            )
+            listOf(KeySpec("=\\<", KeyType.MODE_SYMBOLS2, weight = 1.5f)) + chars("*\"':;!?") +
+                KeySpec("%") + KeySpec("⌫", KeyType.DELETE, weight = 1.5f)
         ),
+        bottomRow(KeySpec("ABC", KeyType.MODE_LETTERS, weight = 1.6f), ",", action),
+    )
+
+    private fun symbolRows2(action: String): List<KeyboardRow> = listOf(
+        KeyboardRow(chars("~`|•√π÷×¶Δ")),
+        KeyboardRow(chars("£¢€¥^°={}\\")),
+        KeyboardRow(
+            listOf(KeySpec("123?", KeyType.MODE_SYMBOLS, weight = 1.5f)) + chars("%©®✓[]<>") +
+                KeySpec("⌫", KeyType.DELETE, weight = 1.5f)
+        ),
+        bottomRow(KeySpec("ABC", KeyType.MODE_LETTERS, weight = 1.6f), ".", action),
     )
 
     private fun numberRows(action: String): List<KeyboardRow> = listOf(
-        KeyboardRow("1234567890".map { KeySpec(it.toString()) }),
-        KeyboardRow("-+.,()/*#%".map { KeySpec(it.toString()) }),
+        KeyboardRow(chars("1234567890")),
+        KeyboardRow(chars("-+.,()/*#%")),
         KeyboardRow(
             listOf(
                 KeySpec("ABC", KeyType.MODE_LETTERS, weight = 1.5f),
-                KeySpec(SPACE_LABEL, KeyType.SPACE, weight = 4f),
+                KeySpec("◀", KeyType.CURSOR_LEFT),
+                KeySpec("▶", KeyType.CURSOR_RIGHT),
+                KeySpec(SPACE_LABEL, KeyType.SPACE, weight = 3f),
                 KeySpec("⌫", KeyType.DELETE, weight = 1.5f),
-                KeySpec(action, KeyType.ENTER, weight = 2f),
+                KeySpec(action, KeyType.ENTER, weight = 1.8f),
             )
         ),
     )
