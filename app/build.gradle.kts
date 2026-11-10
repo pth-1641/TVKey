@@ -12,6 +12,26 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    // Release signing comes from environment variables (set by CI from GitHub Secrets);
+    // nothing secret is stored in the repo. Without them, assembleRelease is left unsigned.
+    val keystorePath = System.getenv("KEYSTORE_FILE")
+    signingConfigs {
+        if (keystorePath != null) {
+            create("release") {
+                storeFile = file(keystorePath)
+                storePassword = System.getenv("KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("KEY_ALIAS")
+                keyPassword = System.getenv("KEY_PASSWORD")
+            }
+        }
+    }
+    buildTypes {
+        release {
+            isMinifyEnabled = false
+            if (keystorePath != null) signingConfig = signingConfigs.getByName("release")
+        }
+    }
+
     defaultConfig {
         applicationId = "com.tvkey.ime"
         minSdk = 23
