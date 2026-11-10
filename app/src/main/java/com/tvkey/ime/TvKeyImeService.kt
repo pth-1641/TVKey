@@ -64,7 +64,7 @@ class TvKeyImeService : InputMethodService() {
         val metrics = resources.displayMetrics
         val panelWidth = ViewGroup.LayoutParams.MATCH_PARENT   // full width, anchored to the bottom
         val maxHeight = (metrics.heightPixels - dp(72)).coerceAtLeast(dp(240))
-        val panelHeight = (metrics.heightPixels * 0.52f).roundToInt().coerceIn(dp(280), minOf(dp(440), maxHeight))
+        val panelHeight = (metrics.heightPixels * 0.42f).roundToInt().coerceIn(dp(220), minOf(dp(360), maxHeight))
         root.background = GradientDrawable().apply {
             setColor(getColor(R.color.keyboard_background))
             cornerRadius = dp(18).toFloat()
