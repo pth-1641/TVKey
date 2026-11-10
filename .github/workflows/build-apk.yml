@@ -47,3 +47,13 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: TVKey-debug.apk
+          generate_release_notes: true
+          body: |
+            **TVKey** — bàn phím tiếng Anh kiểu Google TV cho Android TV / Bliss OS.
+
+            ### Cài đặt
+            1. Tải `TVKey-debug.apk` bên dưới và cài lên thiết bị.
+            2. Mở TVKey → **1. Bật TVKey** → bật công tắc → **2. Chọn TVKey**.
+            3. Mở ô nhập bất kỳ để dùng. Bấm **Back** để đóng bàn phím.
+
+            APK ký bằng khóa debug. Xem README để biết cách dùng và xử lý sự cố.

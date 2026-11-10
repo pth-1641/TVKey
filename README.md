@@ -1,39 +1,66 @@
-# TVKey — bàn phím Android TV
+# TVKey — bàn phím cho Android TV / Bliss OS
 
-Bàn phím tiếng Anh, MVP Android IME Kotlin, thiết kế cho Android TV/Android x86 và điều khiển D-pad. Ứng dụng offline, không khai báo quyền Internet, không lưu nội dung đã gõ. Package: `com.tvkey.ime`.
+Bàn phím tiếng Anh kiểu Google TV, to và rõ khi ngồi xa, điều khiển được bằng **điều khiển bay (chuột), remote D-pad** hoặc bàn phím vật lý. Chạy offline: không quyền Internet, không quảng cáo, không thu thập hay lưu nội dung đã gõ. Package: `com.tvkey.ime`.
 
-## Build APK
+## Tải về và cài đặt
 
-Cần JDK 17 và Android SDK (platform 35 và build-tools do Android Gradle Plugin yêu cầu). Gradle wrapper dùng Gradle 8.7. Từ thư mục repo:
+1. Vào mục **[Releases](../../releases/latest)** của repo này, tải file **`TVKey-debug.apk`**.
+2. Chép APK vào thiết bị (USB, hoặc `adb install -r TVKey-debug.apk`) rồi mở file để cài. Nếu máy hỏi, cho phép cài từ nguồn không rõ.
+3. Mở ứng dụng **TVKey** → bấm **1. Bật TVKey** → bật công tắc TVKey trong trang cài đặt bàn phím của Android.
+4. Quay lại TVKey → bấm **2. Chọn TVKey** → chọn **TVKey** trong danh sách.
+5. Mở ô tìm kiếm hoặc trình duyệt bất kỳ, bấm vào ô nhập: bàn phím sẽ hiện ở nửa dưới màn hình.
+
+Android bắt buộc người dùng tự bật và tự chọn bàn phím; app không thể tự đổi. Dùng ô thử ngay trong màn hình thiết lập của TVKey để kiểm tra.
+
+> APK được ký bằng khóa debug (đủ để cài trực tiếp, không dùng để đưa lên cửa hàng ứng dụng).
+
+## Cách dùng
+
+| Thao tác | Điều khiển bay / chuột | Remote D-pad |
+|---|---|---|
+| Gõ phím | Bấm vào phím | Mũi tên để chọn phím, **OK** để gõ |
+| Xóa | Bấm `⌫` (giữ để xóa liên tục) | Chọn `⌫`, giữ **OK** |
+| Đóng bàn phím | Nút **Back** của điều khiển | **Back** |
+| Gõ số | Bấm giữ chuột vào phím hàng trên (có số nhỏ ở góc), hoặc dùng `?123` | Như trên |
+
+Bố cục:
+- Hàng trên `qwertyuiop` có số `1–0` nhỏ ở góc phím.
+- `⇧` bấm 1 lần = viết hoa một chữ, 2 lần = khóa Caps Lock, 3 lần = tắt.
+- `?123` mở trang ký hiệu (`@ # $ _ & - + ( ) /`...); trong đó `=\<` mở trang ký hiệu thứ hai (`~ ` | • √ π £ € ¥`...), `123?` quay lại trang một, `ABC` về chữ cái.
+- `◀ ▶` di chuyển con trỏ trong ô nhập.
+- `␣` là phím cách. Phím bên phải cùng là Enter: tự đổi thành **Tìm / Đi / Xong / Tiếp** theo từng ô nhập. Ở ô URL/email, phím cạnh phím cách là `@`.
+- Ô nhập số/điện thoại tự dùng bố cục số.
+
+## Nếu bàn phím không hiện
+
+- Mở **Cài đặt › Ngôn ngữ & nhập liệu** và chắc chắn TVKey đã được bật và được chọn.
+- Thử bấm lại vào ô nhập, hoặc khởi động lại ứng dụng đang dùng.
+- Một số app/ROM không dùng cơ chế nhập chuẩn của Android hoặc không chấp nhận bàn phím bên thứ ba; TVKey không thể vượt qua giới hạn đó.
+- Sau khi **cài lại/cập nhật APK**, Android có thể bỏ chọn TVKey: vào lại màn hình thiết lập và bấm **2. Chọn TVKey**.
+
+## Dành cho người phát triển
+
+### Build
+
+Cần JDK 17 và Android SDK (platform 35). Gradle 8.7 được script `gradlew` tự tải.
 
 ```sh
 ./gradlew testDebugUnitTest assembleDebug
 ```
 
-APK đầu ra: `app/build/outputs/apk/debug/app-debug.apk`.
+APK: `app/build/outputs/apk/debug/app-debug.apk`.
 
-## Cài và chọn IME
+### CI và phát hành
 
-1. Cài APK trên thiết bị.
-2. Mở TVKey, chọn **1. Bật TVKey**, bật TVKey trong trang cài đặt Android.
-3. Quay lại, chọn **2. Chọn TVKey**, chọn TVKey trong picker.
-4. Mở ô tìm kiếm bất kỳ. Dùng D-pad để focus, OK/Enter để gõ, Back để đóng IME. Chuột bay/USB click trực tiếp được.
+Mỗi lần push/PR, GitHub Actions (`.github/workflows/build-apk.yml`) chạy unit test và build APK; tải ở **Actions → lần chạy → Artifacts → TVKey-debug-apk**. Để phát hành: đẩy tag dạng `v0.1.0`, workflow sẽ tự tạo **Release** có đính kèm `TVKey-debug.apk`.
 
-Android bắt buộc người dùng tự bật và chọn IME; app không tự thay đổi IME mặc định. Nếu không hiện, kiểm tra lại trang Ngôn ngữ & nhập liệu, khởi động lại ứng dụng đích/thiết bị, và kiểm tra ứng dụng đó có sử dụng InputConnection chuẩn hay không. Một số app/ROM giữ D-pad hoặc không chấp nhận IME bên thứ ba; TVKey không vượt qua giới hạn đó.
+```sh
+git tag v0.1.1 && git push origin v0.1.1
+```
 
-## Ngôn ngữ
+(Nhớ tăng `versionCode`/`versionName` trong `app/build.gradle.kts` trước khi gắn tag.)
 
-Chỉ có bố cục tiếng Anh, kiểu bàn phím Google TV: trải kín chiều ngang, số `1–0` hiện ở góc các phím hàng trên (bấm giữ chuột để gõ số), `◀ ▶` di chuyển con trỏ chữ, `?123` → `=\<` mở 2 trang ký hiệu. Shift bấm 1 lần = hoa một chữ, 2 lần = Caps Lock, 3 lần = tắt. Hàng trên cùng có phím gợi nhanh `youtube`, `.com` (ô URL/email: `.com`, `www.`, `.vn`).
-
-## Kiểm thử và phạm vi
-
-Unit tests bao gồm điều hướng D-pad theo hình học (kể cả phím rộng và phím đang phóng to) và bố cục phím. Kiểm thử thực tế trên Bliss OS/thiết bị, kích thước 720p/1080p và tương thích từng app cần thực hiện trực tiếp trên thiết bị. Mật khẩu không được ghi log/lưu; TVKey không cung cấp gợi ý hay lịch sử. Enter chuyển thành Search/Go/Done/Next theo `EditorInfo` khi có, fallback Enter nếu không có action.
-
-## CI: tự build APK trên GitHub
-
-Mỗi lần push/PR, workflow `.github/workflows/build-apk.yml` chạy unit test và build APK. Tải file ở tab **Actions → lần chạy → Artifacts → TVKey-debug-apk**. Push tag dạng `v0.1.0` để APK được đính kèm vào **Releases**.
-
-## Thử trên emulator Android TV (không cần TV thật)
+### Thử trên emulator Android TV (không cần TV thật)
 
 ```sh
 sdkmanager "emulator" "system-images;android-34;android-tv;arm64-v8a"   # Mac Apple Silicon
@@ -43,4 +70,8 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 adb shell ime enable com.tvkey.ime/.TvKeyImeService && adb shell ime set com.tvkey.ime/.TvKeyImeService
 ```
 
-Mẹo: đừng dùng `adb shell am force-stop com.tvkey.ime` — Android sẽ tự bỏ chọn TVKey. Cài lại APK cũng làm mất lựa chọn, cần chạy lại `ime set`. Phím mũi tên/Enter/Esc trên Mac tương ứng D-pad/OK/Back.
+Emulator Android TV chưa có trình duyệt; có thể cài Firefox APK để thử bàn phím trong ô địa chỉ. Đừng dùng `adb shell am force-stop com.tvkey.ime` vì Android sẽ bỏ chọn TVKey; cài lại APK cũng cần chạy lại `ime set`. Phím mũi tên/Enter/Esc trên Mac tương ứng D-pad/OK/Back.
+
+### Kiểm thử
+
+Unit test gồm điều hướng D-pad theo hình học (phím rộng, phím đang phóng to, toàn bộ bố cục) và bố cục các trang phím. Chưa kiểm thử trên thiết bị Bliss OS thật; các app không dùng cơ chế nhập chuẩn của Android có thể không nhận bàn phím.
