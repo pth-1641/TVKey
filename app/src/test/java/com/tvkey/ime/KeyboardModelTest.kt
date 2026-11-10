@@ -6,37 +6,35 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class KeyboardModelTest {
-    private fun types(mode: KeyboardMode, language: String = "EN", shift: Boolean = false, web: Boolean = false) =
-        KeyboardModel.rows(mode, language, shift, "Tìm", web).flatMap { it.keys }
+    private fun keys(mode: KeyboardMode, shift: Boolean = false, web: Boolean = false, caps: Boolean = false) =
+        KeyboardModel.rows(mode, shift, "Tìm", web, caps).flatMap { it.keys }
 
     @Test fun everyModeHasSpaceDeleteAndEnter() {
         KeyboardMode.values().forEach { mode ->
-            val keys = types(mode)
-            assertTrue("$mode space", keys.any { it.type == KeyType.SPACE })
-            assertTrue("$mode delete", keys.any { it.type == KeyType.DELETE })
-            assertTrue("$mode enter", keys.any { it.type == KeyType.ENTER && it.label == "Tìm" })
+            val k = keys(mode)
+            assertTrue("$mode space", k.any { it.type == KeyType.SPACE })
+            assertTrue("$mode delete", k.any { it.type == KeyType.DELETE })
+            assertTrue("$mode enter", k.any { it.type == KeyType.ENTER && it.label == "Tìm" })
         }
     }
 
+    @Test fun lettersAreOnlyPlainEnglish() {
+        val letters = keys(KeyboardMode.LETTERS).filter { it.type == KeyType.TEXT && it.output.single().isLetter() }.map { it.output }
+        assertEquals(26, letters.size)
+        assertTrue(letters.all { it.single() in 'a'..'z' })
+        assertEquals("1234567890", keys(KeyboardMode.LETTERS).take(10).joinToString("") { it.output })
+    }
+
     @Test fun shiftUppercasesLetters() {
-        assertTrue(types(KeyboardMode.LETTERS, shift = true).any { it.output == "Q" })
-        assertFalse(types(KeyboardMode.LETTERS, shift = false).any { it.output == "Q" })
+        assertTrue(keys(KeyboardMode.LETTERS, shift = true).any { it.output == "Q" })
+        assertFalse(keys(KeyboardMode.LETTERS).any { it.output == "Q" })
     }
 
-    @Test fun accentKeyOnlyInVietnamese() {
-        assertFalse(types(KeyboardMode.LETTERS, "EN").any { it.type == KeyType.ACCENT_BASE })
-        assertTrue(types(KeyboardMode.LETTERS, "VI").any { it.label == "DẤU" })
-    }
-
-    @Test fun urlContextAddsAtAndDot() {
-        assertTrue(types(KeyboardMode.LETTERS, web = true).any { it.output == "@" })
-        assertFalse(types(KeyboardMode.LETTERS, web = false).any { it.output == "@" })
-    }
-
-    @Test fun vietnameseModeOffersAllTones() {
-        val tones = types(KeyboardMode.VIETNAMESE).filter { it.type == KeyType.TONE }.map { it.tone }
-        assertEquals(6, tones.size)
-        assertTrue(tones.containsAll(listOf(0, 1, 2, 3, 4, VietnameseAccents.NO_TONE)))
+    @Test fun bottomRowIsGboardStyle() {
+        val bottom = KeyboardModel.rows(KeyboardMode.LETTERS, false, "↵", false, false).last().keys
+        assertEquals(listOf("?123", ",", "Dấu cách", ".", "↵"), bottom.map { it.label })
+        val web = KeyboardModel.rows(KeyboardMode.LETTERS, false, "↵", true, false).last().keys
+        assertEquals("@", web[1].output)
     }
 
     @Test fun quickKeysDependOnContext() {
@@ -45,10 +43,7 @@ class KeyboardModelTest {
     }
 
     @Test fun capsLockChangesShiftGlyph() {
-        val shiftKey = { caps: Boolean ->
-            KeyboardModel.rows(KeyboardMode.LETTERS, "EN", true, "Enter", false, caps)
-                .flatMap { it.keys }.first { it.type == KeyType.SHIFT }.label
-        }
-        assertEquals("⇧", shiftKey(false)); assertEquals("⇪", shiftKey(true))
+        val glyph = { caps: Boolean -> keys(KeyboardMode.LETTERS, true, false, caps).first { it.type == KeyType.SHIFT }.label }
+        assertEquals("⇧", glyph(false)); assertEquals("⇪", glyph(true))
     }
 }

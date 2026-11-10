@@ -38,7 +38,6 @@ class SettingsActivity : Activity() {
         page.addView(button(getString(R.string.select)) {
             (getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager).showInputMethodPicker()
         }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(56)))
-        page.addView(text("Nhập tiếng Việt: chuyển sang VI trong bàn phím, chọn DẤU, chọn chữ rồi chọn Sắc/Huyền/Hỏi/Ngã/Nặng. Ví dụ: b + ô + Sắc → bố.", 16f, 0xFFCAD2DF.toInt()))
         page.addView(EditText(this).apply {
             hint = getString(R.string.test_hint); textSize = 19f; setSingleLine(false); minLines = 2
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE

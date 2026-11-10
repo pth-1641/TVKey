@@ -23,7 +23,6 @@ import kotlin.math.roundToInt
 
 /** A real Android IME; it writes only through the current InputConnection. */
 class TvKeyImeService : InputMethodService() {
-    private lateinit var prefs: SharedPreferences
     private lateinit var root: LinearLayout
     private lateinit var status: TextView
     private val keyViews = mutableListOf<Button>()
@@ -31,17 +30,13 @@ class TvKeyImeService : InputMethodService() {
     private var mode = KeyboardMode.LETTERS
     private var shift = false
     private var capsLock = false
-    private var language = "EN"
-    private var actionLabel = "Enter"
+    private var actionLabel = "↵"
     private var webContext = false
-    private var pendingVietnameseBase: String? = null
     private val handler = Handler(Looper.getMainLooper())
     private var deleteRepeater: Runnable? = null
 
     override fun onCreate() {
         super.onCreate()
-        prefs = getSharedPreferences("tvkey", Context.MODE_PRIVATE)
-        language = prefs.getString("language", "EN") ?: "EN"
     }
 
     override fun onCreateInputView(): View {
@@ -67,11 +62,11 @@ class TvKeyImeService : InputMethodService() {
             clipToPadding = false
         }
         val screenHeight = resources.displayMetrics.heightPixels
-        val desiredHeight = (screenHeight * 0.52f).roundToInt()
+        val desiredHeight = (screenHeight * 0.58f).roundToInt()
         val maxHeight = (screenHeight - dp(72)).coerceAtLeast(dp(240))
         root.layoutParams = ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
-            desiredHeight.coerceIn(dp(280), minOf(dp(410), maxHeight)),
+            desiredHeight.coerceIn(dp(300), minOf(dp(460), maxHeight)),
         )
         rebuild(resetFocus = true)
         return root
@@ -93,7 +88,6 @@ class TvKeyImeService : InputMethodService() {
             InputType.TYPE_TEXT_FLAG_CAP_WORDS or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
         shift = inputClass == InputType.TYPE_CLASS_TEXT && (inputType and capFlags) != 0
         capsLock = false
-        pendingVietnameseBase = null
         actionLabel = actionText(info)
         if (::root.isInitialized) rebuild(resetFocus = true)
     }
@@ -154,8 +148,7 @@ class TvKeyImeService : InputMethodService() {
         }
         status = TextView(this).apply {
             text = when (mode) {
-                KeyboardMode.VIETNAMESE -> "VI: chọn chữ rồi chọn dấu${if (shift) " · HOA" else ""}"
-                else -> "${language}    ${if (capsLock) "⇪ CAPS" else if (shift) "⇧ HOA" else "abc"}"
+                else -> if (capsLock) "⇪ CAPS" else if (shift) "⇧ HOA" else ""
             }
             setTextColor(Color.WHITE); textSize = dimensionSp(R.dimen.ime_status_text_size)
             layoutParams = LinearLayout.LayoutParams(0, dp(34), 1f)
@@ -175,7 +168,7 @@ class TvKeyImeService : InputMethodService() {
         header.addView(closeButton)
         keyViews += closeButton
         root.addView(header)
-        KeyboardModel.rows(mode, language, shift, actionLabel, webContext, capsLock).forEach { row ->
+        KeyboardModel.rows(mode, shift, actionLabel, webContext, capsLock).forEach { row ->
             val line = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER
@@ -196,8 +189,7 @@ class TvKeyImeService : InputMethodService() {
             val restored = oldSpec?.let { previous ->
                 keyViews.indexOfFirst { candidate ->
                     val current = candidate.tag as? KeySpec ?: return@indexOfFirst false
-                    val isCharKey = previous.type == KeyType.TEXT || previous.type == KeyType.ACCENT_BASE ||
-                        previous.type == KeyType.TONE
+                    val isCharKey = previous.type == KeyType.TEXT
                     current.type == previous.type &&
                         (!isCharKey || current.output.equals(previous.output, ignoreCase = true) ||
                             current.label == previous.label)
@@ -211,15 +203,14 @@ class TvKeyImeService : InputMethodService() {
     private fun defaultFocusIndex(): Int {
         val wanted = when (mode) {
             KeyboardMode.NUMBERS, KeyboardMode.SYMBOLS -> "5"
-            KeyboardMode.VIETNAMESE -> "ă"
-            else -> "g"
+            KeyboardMode.LETTERS -> "g"
         }
         return keyViews.indexOfFirst { (it.tag as? KeySpec)?.output == wanted }.takeIf { it >= 0 } ?: 0
     }
 
     private fun makeKeyButton(spec: KeySpec): Button = Button(this).apply {
         text = spec.label
-        textSize = if (spec.label.length > 5) dimensionSp(R.dimen.ime_key_small_text_size) else dimensionSp(R.dimen.ime_key_text_size)
+        textSize = if (spec.label.length > 9) dimensionSp(R.dimen.ime_key_small_text_size) else dimensionSp(R.dimen.ime_key_text_size)
         isAllCaps = false
         gravity = Gravity.CENTER
         stateListAnimator = null
@@ -285,7 +276,12 @@ class TvKeyImeService : InputMethodService() {
 
     private fun handleKey(key: KeySpec) {
         when (key.type) {
-            KeyType.TEXT -> { commit(key.output); if (shift && !capsLock) { shift = false; rebuild(false) } }
+            KeyType.TEXT -> {
+                commit(key.output)
+                val hadOneShotShift = shift && !capsLock
+                if (hadOneShotShift) shift = false
+                if (hadOneShotShift) rebuild(false)
+            }
             KeyType.SHIFT -> {
                 // off -> once -> caps lock -> off
                 if (!shift) shift = true else if (!capsLock) capsLock = true else { shift = false; capsLock = false }
@@ -295,26 +291,7 @@ class TvKeyImeService : InputMethodService() {
             KeyType.SPACE -> commit(" ")
             KeyType.ENTER -> performEditorAction()
             KeyType.MODE_SYMBOLS -> { mode = KeyboardMode.SYMBOLS; rebuild(true) }
-            KeyType.MODE_LETTERS -> { mode = KeyboardMode.LETTERS; pendingVietnameseBase = null; rebuild(true) }
-            KeyType.LANGUAGE -> {
-                language = if (language == "EN") "VI" else "EN"
-                prefs.edit().putString("language", language).apply()
-                rebuild(false)
-            }
-            KeyType.ACCENT_BASE -> {
-                if (key.label == "DẤU") { mode = KeyboardMode.VIETNAMESE; rebuild(true) }
-                else { pendingVietnameseBase = key.output; status.text = "VI: ${key.output} — chọn dấu (hoặc Không)" }
-            }
-            KeyType.TONE -> {
-                val base = pendingVietnameseBase
-                if (base != null) {
-                    commit(VietnameseAccents.apply(base, key.tone, shift))
-                    pendingVietnameseBase = null
-                    mode = KeyboardMode.LETTERS
-                    if (shift && !capsLock) shift = false
-                    rebuild(true)
-                }
-            }
+            KeyType.MODE_LETTERS -> { mode = KeyboardMode.LETTERS; rebuild(true) }
             KeyType.CLOSE -> requestHideSelf(0)
         }
     }
@@ -350,8 +327,8 @@ class TvKeyImeService : InputMethodService() {
         EditorInfo.IME_ACTION_GO -> "Đi"
         EditorInfo.IME_ACTION_DONE -> "Xong"
         EditorInfo.IME_ACTION_NEXT -> "Tiếp"
-        EditorInfo.IME_ACTION_NONE, EditorInfo.IME_ACTION_UNSPECIFIED, null -> "Enter"
-        else -> "Enter"
+        EditorInfo.IME_ACTION_NONE, EditorInfo.IME_ACTION_UNSPECIFIED, null -> "↵"
+        else -> "↵"
     }
 
     /** Android-TV look: flat dark keys; focused key becomes a bright, slightly enlarged tile. */
