@@ -32,3 +32,15 @@ Unit tests bao gồm điều hướng hình học quanh phím rộng và ghép d
 ## CI: tự build APK trên GitHub
 
 Mỗi lần push/PR, workflow `.github/workflows/build-apk.yml` chạy unit test và build APK. Tải file ở tab **Actions → lần chạy → Artifacts → TVKey-debug-apk**. Push tag dạng `v0.1.0` để APK được đính kèm vào **Releases**.
+
+## Thử trên emulator Android TV (không cần TV thật)
+
+```sh
+sdkmanager "emulator" "system-images;android-34;android-tv;arm64-v8a"   # Mac Apple Silicon
+avdmanager create avd -n tv -k "system-images;android-34;android-tv;arm64-v8a"
+emulator -avd tv
+adb install -r app/build/outputs/apk/debug/app-debug.apk
+adb shell ime enable com.tvkey.ime/.TvKeyImeService && adb shell ime set com.tvkey.ime/.TvKeyImeService
+```
+
+Mẹo: đừng dùng `adb shell am force-stop com.tvkey.ime` — Android sẽ tự bỏ chọn TVKey. Cài lại APK cũng làm mất lựa chọn, cần chạy lại `ime set`. Phím mũi tên/Enter/Esc trên Mac tương ứng D-pad/OK/Back.

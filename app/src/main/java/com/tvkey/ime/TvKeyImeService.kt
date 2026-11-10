@@ -45,7 +45,19 @@ class TvKeyImeService : InputMethodService() {
     }
 
     override fun onCreateInputView(): View {
-        root = LinearLayout(this).apply {
+        // Depending on the ROM, hardware keys reach either this service (window not focusable)
+        // or the keyboard window's own view tree. Intercept at the root so both paths share one
+        // handler and the framework's default spatial focus search never moves focus on its own.
+        root = object : LinearLayout(this) {
+            override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+                val handled = when (event.action) {
+                    KeyEvent.ACTION_DOWN -> onKeyDown(event.keyCode, event)
+                    KeyEvent.ACTION_UP -> onKeyUp(event.keyCode, event)
+                    else -> false
+                }
+                return handled || super.dispatchKeyEvent(event)
+            }
+        }.apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(getColor(R.color.keyboard_background))
             setPadding(dp(14), dp(10), dp(14), dp(12))
@@ -211,6 +223,7 @@ class TvKeyImeService : InputMethodService() {
         isAllCaps = false
         gravity = Gravity.CENTER
         stateListAnimator = null
+        tag = spec
         applyStyle(this, false, false)
         contentDescription = spec.label
         tag = spec
@@ -234,12 +247,15 @@ class TvKeyImeService : InputMethodService() {
             requestFocus()
             handleKey(spec)
         }
-        if (spec.type == KeyType.DELETE) {
-            setOnLongClickListener { startDeleteRepeat(); true }
-            setOnTouchListener { _, event ->
-                if (event.action == MotionEvent.ACTION_UP || event.action == MotionEvent.ACTION_CANCEL) stopDeleteRepeat()
-                false
+        if (spec.type == KeyType.DELETE) setOnLongClickListener { startDeleteRepeat(); true }
+        // A focusable-in-touch-mode view normally spends its first tap only taking focus.
+        // Taking focus on DOWN makes a single mouse/touch click activate the key.
+        setOnTouchListener { view, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> if (!view.isFocused) view.requestFocus()
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> if (spec.type == KeyType.DELETE) stopDeleteRepeat()
             }
+            false
         }
     }
 
