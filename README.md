@@ -4,8 +4,8 @@ Bàn phím tiếng Anh kiểu Google TV, to và rõ khi ngồi xa, điều khi�
 
 ## Tải về và cài đặt
 
-1. Vào mục **[Releases](../../releases/latest)** của repo này, tải file **`TVKey-debug.apk`**.
-2. Chép APK vào thiết bị (USB, hoặc `adb install -r TVKey-debug.apk`) rồi mở file để cài. Nếu máy hỏi, cho phép cài từ nguồn không rõ.
+1. Vào mục **[Releases](../../releases/latest)** của repo này, tải file **`TVKey.apk`**.
+2. Chép APK vào thiết bị (USB, hoặc `adb install -r TVKey.apk`) rồi mở file để cài. Nếu máy hỏi, cho phép cài từ nguồn không rõ.
 3. Mở ứng dụng **TVKey** → bấm **1. Bật TVKey** → bật công tắc TVKey trong trang cài đặt bàn phím của Android.
 4. Quay lại TVKey → bấm **2. Chọn TVKey** → chọn **TVKey** trong danh sách.
 5. Mở ô tìm kiếm hoặc trình duyệt bất kỳ, bấm vào ô nhập: bàn phím sẽ hiện ở nửa dưới màn hình.
@@ -52,7 +52,7 @@ APK: `app/build/outputs/apk/debug/app-debug.apk`.
 
 ### CI và phát hành
 
-Mỗi lần push/PR, GitHub Actions (`.github/workflows/build-apk.yml`) chạy unit test và build APK; tải ở **Actions → lần chạy → Artifacts → TVKey-debug-apk**. Để phát hành: đẩy tag dạng `v0.1.0`, workflow sẽ tự tạo **Release** có đính kèm `TVKey-debug.apk`.
+Mỗi lần push/PR, GitHub Actions (`.github/workflows/build-apk.yml`) chạy unit test và build APK; tải ở **Actions → lần chạy → Artifacts → TVKey-apk**. Để phát hành: đẩy tag dạng `v0.1.0`, workflow sẽ tự tạo **Release** có đính kèm `TVKey.apk`.
 
 ```sh
 git tag v0.1.1 && git push origin v0.1.1

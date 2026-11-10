@@ -35,24 +35,24 @@ jobs:
         run: chmod +x gradlew && ./gradlew testDebugUnitTest assembleDebug
 
       - name: Rename APK
-        run: cp app/build/outputs/apk/debug/app-debug.apk TVKey-debug.apk
+        run: cp app/build/outputs/apk/debug/app-debug.apk TVKey.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: TVKey-debug-apk
-          path: TVKey-debug.apk
+          name: TVKey-apk
+          path: TVKey.apk
 
       - name: Publish release (tags only)
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: TVKey-debug.apk
+          files: TVKey.apk
           generate_release_notes: true
           body: |
             **TVKey** — bàn phím tiếng Anh kiểu Google TV cho Android TV / Bliss OS.
 
             ### Cài đặt
-            1. Tải `TVKey-debug.apk` bên dưới và cài lên thiết bị.
+            1. Tải `TVKey.apk` bên dưới và cài lên thiết bị.
             2. Mở TVKey → **1. Bật TVKey** → bật công tắc → **2. Chọn TVKey**.
             3. Mở ô nhập bất kỳ để dùng. Bấm **Back** để đóng bàn phím.
 
