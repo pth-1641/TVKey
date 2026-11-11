@@ -195,6 +195,21 @@ class TvKeyImeService : InputMethodService() {
         root.post { focusCurrent() }
     }
 
+    /** Shift only changes labels, so update the existing buttons instead of rebuilding the whole keyboard. */
+    private fun refreshLabels() {
+        val specs = KeyboardModel.rows(mode, shift, actionLabel, webContext, capsLock).flatMap { it.keys }
+        if (specs.size != keyViews.size) { rebuild(false); return }
+        specs.forEachIndexed { i, spec ->
+            val button = keyViews[i] as HintButton
+            button.tag = spec
+            if (spec.type == KeyType.SHIFT) {
+                button.shiftIcon = if (capsLock) 2 else if (shift) 1 else 0
+                button.invalidate()
+            } else if (button.text.toString() != spec.label) button.text = spec.label
+            applyStyle(button, button.hasFocus(), false)
+        }
+    }
+
     private fun defaultFocusIndex(): Int {
         val wanted = when (mode) {
             KeyboardMode.NUMBERS, KeyboardMode.SYMBOLS -> "5"
@@ -240,7 +255,7 @@ class TvKeyImeService : InputMethodService() {
         setOnClickListener {
             focusIndex = keyViews.indexOf(this).coerceAtLeast(0)
             requestFocus()
-            handleKey(spec)
+            handleKey(tag as? KeySpec ?: spec)
         }
         if (spec.type == KeyType.DELETE) setOnLongClickListener { startDeleteRepeat(); true }
         else if (spec.hint != null) setOnLongClickListener { commit(spec.hint); true }
@@ -285,12 +300,12 @@ class TvKeyImeService : InputMethodService() {
                 commit(key.output)
                 val hadOneShotShift = shift && !capsLock
                 if (hadOneShotShift) shift = false
-                if (hadOneShotShift) rebuild(false)
+                if (hadOneShotShift) refreshLabels()
             }
             KeyType.SHIFT -> {
                 // off -> once -> caps lock -> off
                 if (!shift) shift = true else if (!capsLock) capsLock = true else { shift = false; capsLock = false }
-                rebuild(false)
+                refreshLabels()
             }
             KeyType.DELETE -> deleteOne()
             KeyType.SPACE -> commit(" ")
@@ -357,15 +372,22 @@ class TvKeyImeService : InputMethodService() {
             spec?.type == KeyType.ENTER -> getColor(R.color.key_enter)
             else -> getColor(R.color.key_background)
         }
-        button.background = GradientDrawable().apply {
-            setColor(fill)
-            cornerRadius = resources.getDimension(R.dimen.ime_corner_radius)
-        }
+        button.background = backgroundFor(fill)
         button.setTextColor(if (focused) getColor(R.color.keyboard_background) else getColor(R.color.key_text))
         val scale = if (focused) 1.08f else 1f
         button.animate().scaleX(scale).scaleY(scale).setDuration(90).start()
         button.elevation = if (focused) dp(8).toFloat() else 0f
     }
+    private val backgrounds = HashMap<Int, android.graphics.drawable.Drawable.ConstantState>()
+
+    /** Only a handful of fill colors exist, so share their state instead of allocating a drawable per focus change. */
+    private fun backgroundFor(fill: Int) = backgrounds.getOrPut(fill) {
+        GradientDrawable().apply {
+            setColor(fill)
+            cornerRadius = resources.getDimension(R.dimen.ime_corner_radius)
+        }.constantState!!
+    }.newDrawable()
+
     private fun dimensionSp(resource: Int) = resources.getDimension(resource) / resources.displayMetrics.scaledDensity
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).roundToInt()
 
