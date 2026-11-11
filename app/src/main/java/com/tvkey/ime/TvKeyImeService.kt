@@ -143,11 +143,21 @@ class TvKeyImeService : InputMethodService() {
         return super.onKeyUp(keyCode, event)
     }
 
-    private fun rebuild(resetFocus: Boolean) {
+    private val rowStarts = mutableListOf<Int>()
+
+    /** Switching pages keeps the highlight at the same row/column (e.g. ?123 -> ABC) instead of jumping. */
+    private fun rebuildKeepingPosition() {
+        val row = rowStarts.indexOfLast { it <= focusIndex }.coerceAtLeast(0)
+        val col = focusIndex - (rowStarts.getOrNull(row) ?: 0)
+        rebuild(resetFocus = false, anchor = row to col)
+    }
+
+    private fun rebuild(resetFocus: Boolean, anchor: Pair<Int, Int>? = null) {
         if (!::root.isInitialized) return
         val oldSpec = keyViews.getOrNull(focusIndex)?.tag as? KeySpec
         root.removeAllViews()
         keyViews.clear()
+        rowStarts.clear()
         KeyboardModel.rows(mode, shift, actionLabel, webContext, capsLock).forEach { row ->
             val line = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
@@ -155,6 +165,7 @@ class TvKeyImeService : InputMethodService() {
                 clipChildren = false
                 layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f)
             }
+            rowStarts += keyViews.size
             row.keys.forEach { spec ->
                 val button = makeKeyButton(spec)
                 val params = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, spec.weight).apply {
@@ -165,7 +176,11 @@ class TvKeyImeService : InputMethodService() {
             }
             root.addView(line)
         }
-        focusIndex = if (resetFocus) defaultFocusIndex() else {
+        focusIndex = if (anchor != null) {
+            val start = rowStarts.getOrElse(anchor.first) { 0 }
+            val end = rowStarts.getOrElse(anchor.first + 1) { keyViews.size }
+            (start + anchor.second).coerceAtMost(end - 1).coerceIn(0, keyViews.lastIndex)
+        } else if (resetFocus) defaultFocusIndex() else {
             val restored = oldSpec?.let { previous ->
                 keyViews.indexOfFirst { candidate ->
                     val current = candidate.tag as? KeySpec ?: return@indexOfFirst false
@@ -190,14 +205,22 @@ class TvKeyImeService : InputMethodService() {
     }
 
     private fun makeKeyButton(spec: KeySpec): Button = HintButton(this, spec.hint).apply {
-        text = spec.label
+        if (spec.type == KeyType.SHIFT) {
+            // Drawn as an icon: outline = off, filled = next letter capital, filled + bar = caps lock.
+            shiftIcon = if (capsLock) 2 else if (shift) 1 else 0
+            text = ""
+        } else text = spec.label
         textSize = if (spec.label.length > 9) dimensionSp(R.dimen.ime_key_small_text_size) else dimensionSp(R.dimen.ime_key_text_size)
         isAllCaps = false
         gravity = Gravity.CENTER
         stateListAnimator = null
         tag = spec
         applyStyle(this, false, false)
-        contentDescription = if (spec.type == KeyType.SPACE) "Dấu cách" else spec.label
+        contentDescription = when (spec.type) {
+            KeyType.SPACE -> "Dấu cách"
+            KeyType.SHIFT -> "Shift"
+            else -> spec.label
+        }
         tag = spec
         isFocusable = true
         isFocusableInTouchMode = true
@@ -272,11 +295,12 @@ class TvKeyImeService : InputMethodService() {
             KeyType.DELETE -> deleteOne()
             KeyType.SPACE -> commit(" ")
             KeyType.ENTER -> performEditorAction()
-            KeyType.MODE_SYMBOLS -> { mode = KeyboardMode.SYMBOLS; rebuild(true) }
-            KeyType.MODE_SYMBOLS2 -> { mode = KeyboardMode.SYMBOLS2; rebuild(true) }
+            KeyType.MODE_SYMBOLS -> { mode = KeyboardMode.SYMBOLS; rebuildKeepingPosition() }
+            KeyType.MODE_SYMBOLS2 -> { mode = KeyboardMode.SYMBOLS2; rebuildKeepingPosition() }
+            KeyType.CLEAR_ALL -> clearAll()
             KeyType.CURSOR_LEFT -> sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_LEFT)
             KeyType.CURSOR_RIGHT -> sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_RIGHT)
-            KeyType.MODE_LETTERS -> { mode = KeyboardMode.LETTERS; rebuild(true) }
+            KeyType.MODE_LETTERS -> { mode = KeyboardMode.LETTERS; rebuildKeepingPosition() }
         }
     }
 
@@ -285,6 +309,13 @@ class TvKeyImeService : InputMethodService() {
         val connection = currentInputConnection ?: return
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) connection.deleteSurroundingTextInCodePoints(1, 0)
         else connection.deleteSurroundingText(1, 0)
+    }
+
+    private fun clearAll() {
+        val connection = currentInputConnection ?: return
+        val before = connection.getTextBeforeCursor(100_000, 0)?.length ?: 0
+        val after = connection.getTextAfterCursor(100_000, 0)?.length ?: 0
+        connection.deleteSurroundingText(before, after)
     }
 
     private fun startDeleteRepeat() {
@@ -341,8 +372,36 @@ class TvKeyImeService : InputMethodService() {
     /** Button that draws a small hint (e.g. a digit) in its top-right corner. */
     private class HintButton(context: Context, private val hint: String?) : Button(context) {
         private val hintPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
+        /** -1 = not a shift key; 0 off, 1 once, 2 caps lock. */
+        var shiftIcon = -1
+        private val iconPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
+
+        private fun drawShiftIcon(canvas: android.graphics.Canvas) {
+            val size = minOf(width, height) * 0.46f
+            val left = (width - size) / 2f
+            val caps = shiftIcon == 2
+            val top = (height - size) / 2f
+            val h = if (caps) size * 0.8f else size
+            fun p(x: Float, y: Float) = left + x * size to top + y * h
+            val path = android.graphics.Path()
+            listOf(0.5f to 0f, 1f to 0.5f, 0.72f to 0.5f, 0.72f to 0.95f, 0.28f to 0.95f, 0.28f to 0.5f, 0f to 0.5f)
+                .map { p(it.first, it.second) }
+                .forEachIndexed { i, (x, y) -> if (i == 0) path.moveTo(x, y) else path.lineTo(x, y) }
+            path.close()
+            iconPaint.color = currentTextColor
+            iconPaint.strokeJoin = android.graphics.Paint.Join.ROUND
+            iconPaint.strokeWidth = size * 0.1f
+            iconPaint.style = if (shiftIcon == 0) android.graphics.Paint.Style.STROKE else android.graphics.Paint.Style.FILL_AND_STROKE
+            canvas.drawPath(path, iconPaint)
+            if (caps) {
+                iconPaint.style = android.graphics.Paint.Style.FILL
+                canvas.drawRect(left + size * 0.28f, top + size * 0.88f, left + size * 0.72f, top + size, iconPaint)
+            }
+        }
+
         override fun onDraw(canvas: android.graphics.Canvas) {
             super.onDraw(canvas)
+            if (shiftIcon >= 0) drawShiftIcon(canvas)
             val h = hint ?: return
             hintPaint.color = currentTextColor
             hintPaint.alpha = 160

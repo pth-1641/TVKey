@@ -32,10 +32,12 @@ class KeyboardModelTest {
 
     @Test fun bottomRowMatchesGoogleTv() {
         val bottom = KeyboardModel.rows(KeyboardMode.LETTERS, false, "↵", false, false).last().keys
-        assertEquals(listOf("?123", "◀", "▶", "␣", ".", "↵"), bottom.map { it.label })
+        assertEquals(listOf("?123", "◀", "▶", "␣", ".", "Xóa hết", "↵"), bottom.map { it.label })
         assertEquals(listOf(KeyType.CURSOR_LEFT, KeyType.CURSOR_RIGHT), bottom.drop(1).take(2).map { it.type })
         val web = KeyboardModel.rows(KeyboardMode.LETTERS, false, "↵", true, false).last().keys
         assertEquals("@", web[4].output)
+        assertEquals(".com", web[5].output)
+        assertTrue(keys(KeyboardMode.NUMBERS).any { it.type == KeyType.CLEAR_ALL })
     }
 
     @Test fun symbolPagesLinkToEachOther() {
