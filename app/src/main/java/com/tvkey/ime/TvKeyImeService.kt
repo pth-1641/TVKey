@@ -105,7 +105,11 @@ class TvKeyImeService : InputMethodService() {
         super.onFinishInputView(finishingInput)
     }
 
-    override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean = when (keyCode) {
+    // While the keyboard is hidden, Android still offers every key to the IME first. Swallowing
+    // them there would break D-pad navigation in the foreground app, so only act when visible.
+    override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean = if (!isInputViewShown) false else handleKeyDown(keyCode, event)
+
+    private fun handleKeyDown(keyCode: Int, event: KeyEvent): Boolean = when (keyCode) {
         KeyEvent.KEYCODE_DPAD_LEFT -> { moveFocus(MoveDirection.LEFT); true }
         KeyEvent.KEYCODE_DPAD_RIGHT -> { moveFocus(MoveDirection.RIGHT); true }
         KeyEvent.KEYCODE_DPAD_UP -> { moveFocus(MoveDirection.UP); true }
@@ -136,6 +140,7 @@ class TvKeyImeService : InputMethodService() {
     }
 
     override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
+        if (!isInputViewShown) return false
         if (keyCode == KeyEvent.KEYCODE_DEL || keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER) {
             stopDeleteRepeat()
             return true
